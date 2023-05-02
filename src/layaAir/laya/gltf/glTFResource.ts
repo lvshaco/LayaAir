@@ -46,6 +46,7 @@ import { Base64Tool } from "../utils/Base64Tool";
 import { Handler } from "../utils/Handler";
 import { MeshFilter } from "../d3/core/MeshFilter";
 import { Byte } from "../utils/Byte";
+import { Color } from "../maths/Color";
 
 const maxSubBoneCount = 24;
 
@@ -697,6 +698,7 @@ export class glTFResource extends Prefab {
             if (pbrMetallicRoughness.baseColorFactor) {
                 let color = layaPBRMaterial.albedoColor;
                 color.fromArray(pbrMetallicRoughness.baseColorFactor);
+                color.toGamma(color);
                 layaPBRMaterial.albedoColor = color;
             }
 
@@ -709,17 +711,16 @@ export class glTFResource extends Prefab {
                 metallicFactor = layaPBRMaterial.metallic = pbrMetallicRoughness.metallicFactor;
             }
 
-            let roughnessFactor = 1.0;
-            layaPBRMaterial.smoothness = 0.0;
-            if (pbrMetallicRoughness.roughnessFactor != undefined) {
-                roughnessFactor = pbrMetallicRoughness.roughnessFactor;
-                layaPBRMaterial.smoothness = 1.0 - pbrMetallicRoughness.roughnessFactor;
-            }
+            let roughnessFactor = pbrMetallicRoughness.roughnessFactor ?? 1;
+            layaPBRMaterial.smoothness = 1.0 - roughnessFactor;
 
             if (pbrMetallicRoughness.metallicRoughnessTexture) {
                 let metallicGlossTexture = this.getTextureWithInfo(pbrMetallicRoughness.metallicRoughnessTexture);
-                if (metallicGlossTexture)
+                if (metallicGlossTexture) {
                     layaPBRMaterial.metallicGlossTexture = this.toMetallicGlossTransTexture(metallicGlossTexture, metallicFactor, roughnessFactor);
+                    // roughnessFactor already encode in texture 
+                    layaPBRMaterial.smoothness = 1.0;
+                }
             }
         }
 
@@ -752,6 +753,7 @@ export class glTFResource extends Prefab {
             let color = layaPBRMaterial.emissionColor;
             color.fromArray(glTFMaterial.emissiveFactor);
             color.a = 1.0;
+            color.toGamma(color);
             layaPBRMaterial.emissionColor = color;
         }
 
@@ -762,7 +764,7 @@ export class glTFResource extends Prefab {
                 break;
             }
             case glTF.glTFMaterialAlphaMode.BLEND: {
-                layaPBRMaterial.renderMode = PBRRenderMode.Transparent;
+                layaPBRMaterial.renderMode = PBRRenderMode.Fade;
                 break;
             }
             case glTF.glTFMaterialAlphaMode.MASK: {
@@ -774,9 +776,7 @@ export class glTFResource extends Prefab {
             }
         }
 
-        if (glTFMaterial.alphaCutoff != undefined) {
-            layaPBRMaterial.alphaTestValue = glTFMaterial.alphaCutoff;
-        }
+        layaPBRMaterial.alphaTestValue = glTFMaterial.alphaCutoff ?? 0.5;
 
         if (glTFMaterial.doubleSided) {
             layaPBRMaterial.cull = RenderState.CULL_NONE;
@@ -1609,6 +1609,12 @@ export class glTFResource extends Prefab {
             let blendWeight: Float32Array = this.getArrributeBuffer(attributes.WEIGHTS_0, "BLENDWEIGHT", attributeMap, vertexDeclarArr);
             let blendIndices: Float32Array = this.getArrributeBuffer(attributes.JOINTS_0, "BLENDINDICES", attributeMap, vertexDeclarArr);
             let tangent: Float32Array = this.getArrributeBuffer(attributes.TANGENT, "TANGENT", attributeMap, vertexDeclarArr);
+            // :(
+            if (tangent) {
+                for (let tangentIndex = 0; tangentIndex < tangent.length; tangentIndex += 4) {
+                    tangent[tangentIndex + 3] *= -1;
+                }
+            }
 
             // todo  vertex color
             // if (color) {
@@ -1997,6 +2003,9 @@ export class glTFResource extends Prefab {
 
                 let mesh = sprite.getComponent(MeshFilter)?.sharedMesh;
                 if (mesh && mesh.morphTargetData) {
+
+                    let ownerStr = sprite.getComponent(SkinnedMeshRenderer) ? "SkinnedMeshRenderer" : "MeshRenderer";
+
                     let morphData = mesh.morphTargetData;
                     let channelCount = morphData.channelCount;
                     // check data 
@@ -2015,7 +2024,7 @@ export class glTFResource extends Prefab {
                                 clipNode.valueArray[i] = outArray[i * channelCount + channelIndex];
                             }
 
-                            clipNode.propertyOwner = "MeshRenderer";
+                            clipNode.propertyOwner = ownerStr;
                             clipNode.propertise = [];
                             clipNode.propertise.push("morphTargetValues");
                             clipNode.propertise.push(channelName);
