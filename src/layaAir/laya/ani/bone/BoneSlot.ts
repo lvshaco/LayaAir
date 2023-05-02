@@ -71,9 +71,12 @@ export class BoneSlot {
      * 通过名字显示指定对象
      * @param	name
      */
-    showDisplayByName(name: string): void {
+    showDisplayByName(name: string, debug: boolean = false): void {
         if (this.currSlotData) {
-            this.showDisplayByIndex(this.currSlotData.getDisplayByName(name));
+            if (debug) {
+                console.log("this.currSlotData.getDisplayByName="+this.currSlotData.getDisplayByName(name));
+            }
+            this.showDisplayByIndex(this.currSlotData.getDisplayByName(name), debug);
         }
     }
 
@@ -108,20 +111,32 @@ export class BoneSlot {
      * 指定显示对象
      * @param	index
      */
-    showDisplayByIndex(index: number): void {
+    showDisplayByIndex(index: number, debug: boolean = false): void {
         this.originalIndex = index;
         if (this._replaceDic[index] != null) index = this._replaceDic[index];
         if (this.currSlotData && index > -1 && index < this.currSlotData.displayArr.length) {
             this.displayIndex = index;
             this.currDisplayData = this.currSlotData.displayArr[index];
+            if (debug) {
+                console.log("this.currDisplayData="+this.currDisplayData+" this.displayIndex="+index);
+            }
             if (this.currDisplayData) {
                 var tName: string = this.currDisplayData.name;
-                this.currTexture = this.templet.getTexture(tName);
+                this.currTexture = this.templet.getTexture(tName, debug);
+                if (debug) {
+                    console.log("tName="+tName+" this.currTexture="+this.currTexture);
+                }
                 if (this.currTexture && this.currDisplayData.type == 0 && this.currDisplayData.uvs) {
                     this.currTexture = this.currDisplayData.createTexture(this.currTexture);
+                    if (debug) {
+                        console.log("xxxxx");
+                    }
                 }
             }
         } else {
+                    if (debug) {
+                        console.log("2222");
+                    }
             this.displayIndex = -1;
             this.currDisplayData = null;
             this.currTexture = null;
@@ -209,14 +224,19 @@ export class BoneSlot {
      * @param	graphics
      * @param	noUseSave   不使用共享的矩阵对象 _tempResultMatrix，只有实时计算的时候才设置为true
      */
-    draw(graphics: GraphicsAni, boneMatrixArray: any[], noUseSave: boolean = false, alpha: number = 1): void {
+    draw(graphics: GraphicsAni, boneMatrixArray: any[], noUseSave: boolean = false, alpha: number = 1, debug: boolean = false): void {
         if ((this._diyTexture == null && this.currTexture == null) || this.currDisplayData == null) {
             if (!(this.currDisplayData && this.currDisplayData.type == 3)) {
                 return;
             }
         }
         var tTexture = this.currTexture;
-        if (this._diyTexture) tTexture = this._diyTexture;
+        if (this._diyTexture) {
+            tTexture = this._diyTexture;
+            if (debug) {
+                console.log("is diyTexture");
+            }
+        }
         var tSkinSprite: any;
         switch (this.currDisplayData.type) {
             case 0:
@@ -279,6 +299,9 @@ export class BoneSlot {
                 }
                 var tIBArray: any[];
                 if (this.currDisplayData.bones == null) {
+                    if (debug) {
+                        console.log("bones == null");
+                    }
                     var tVertices: any[] = this.currDisplayData.weights;
                     if (this.deformData) {
                         tVertices = this.deformData;
@@ -330,7 +353,10 @@ export class BoneSlot {
                         }
                     }
                 } else {
-                    this.skinMesh(boneMatrixArray, tSkinSprite);
+                    if (debug) {
+                        console.log("bones != null");
+                    }
+                    this.skinMesh(boneMatrixArray, tSkinSprite, debug);
                 }
 
                 graphics.drawSkin(tSkinSprite, alpha);
@@ -361,7 +387,7 @@ export class BoneSlot {
      * 显示蒙皮动画
      * @param	boneMatrixArray 当前帧的骨骼矩阵
      */
-    private skinMesh(boneMatrixArray: any[], skinSprite: any): void {
+    private skinMesh(boneMatrixArray: any[], skinSprite: any, debug : boolean = false): void {
         var tTexture: Texture = this.currTexture;
         var tBones: any[] = this.currDisplayData.bones;
         var tUvs: any[];
@@ -377,6 +403,9 @@ export class BoneSlot {
             tUvs = this._curDiyUV;
         } else {
             tUvs = this.currDisplayData.uvs;
+            if (debug) {
+                console.log("tUvs["+tUvs.length+"]="+tUvs.join(','));
+            }
         }
 
         var tWeights: any[] = this.currDisplayData.weights;
@@ -428,10 +457,19 @@ export class BoneSlot {
                 }
                 tVertices.push(tRx, tRy);
             }
+            if (debug) {
+                console.log("tBones["+tBones.length+"]="+tBones.join(','));
+                console.log("tVertices["+tVertices.length+"]="+tVertices.join(','));
+                console.log("tWeights["+tWeights.length+"]="+tWeights.join(','));
+                console.log("tTriangles["+tTriangles.length+"]="+tTriangles.join(','));
+            }
         }
         this._mVerticleArr = tVertices;
         tIBArray = tTriangles;
         this._mVerticleArr = this.getSaveVerticle(this._mVerticleArr);
+        if (debug) {
+            console.log("this._mVerticleArr["+this._mVerticleArr.length+"]="+this._mVerticleArr.join(','));
+        }
         skinSprite.init2(tTexture, tIBArray, this._mVerticleArr, tUvs);
     }
 

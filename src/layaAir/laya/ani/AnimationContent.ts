@@ -4,10 +4,10 @@ import { AnimationNodeContent } from "./AnimationNodeContent";
  * @author ...
  */
 export class AnimationContent {
-	nodes: AnimationNodeContent[];
+	nodes: AnimationNodeContent[]; // 骨骼数据
 	name: string;
 	playTime: number;
-	bone3DMap: any;
+	bone3DMap: any; // 骨骼名称到骨骼索引（nodes中的索引）
 	totalKeyframeDatasLength: number;
 }
 

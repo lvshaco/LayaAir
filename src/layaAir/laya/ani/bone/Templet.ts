@@ -45,11 +45,11 @@ export class Templet extends AnimationTemplet {
     /** path数据 */
     pathArr: any[] = [];
     /** 存放插槽数据的字典 */
-    boneSlotDic: any = {};
+    boneSlotDic: any = {}; // 名字到插槽数据
     /** 绑定插槽数据的字典 */
-    bindBoneBoneSlotDic: any = {};
+    bindBoneBoneSlotDic: any = {}; // 骨骼对应的插槽数据
     /** 存放插糟数据的数组 */
-    boneSlotArray: any[] = [];
+    boneSlotArray: any[] = []; // 原始插槽数据数组
     /** 皮肤数据 */
     skinDataArray: any[] = [];
     /** 皮肤的字典数据 */
@@ -97,12 +97,14 @@ export class Templet extends AnimationTemplet {
     }
 
     _parse(texture: Texture, createURL: string, skeletonData: ArrayBuffer) {
+        console.log("createURL="+createURL);
         this._path = createURL.slice(0, createURL.lastIndexOf("/")) + "/";
         texture._addReference();
         this._mainTexture = texture;
 
         var reader: Byte = new Byte(skeletonData);
         this._aniVersion = reader.readUTFString();
+        console.log("_aniVersion="+this._aniVersion);
         AnimationParser01.parse(this, reader);
 
         if (this._aniVersion === LAYA_ANIMATION_VISION) {
@@ -123,6 +125,7 @@ export class Templet extends AnimationTemplet {
         var tTextureName: string = tByte.readUTFString();
         var tTextureNameArr: any[] = tTextureName.split("\n");
         var tSrcTexturePath: string;
+        console.log("===> path="+this._path+" TextureLen="+tTextureLen+" TextureName="+tTextureName);
         for (let i = 0; i < tTextureLen; i++) {
             tSrcTexturePath = this._path + tTextureNameArr[i * 2];
             tTextureName = tTextureNameArr[i * 2 + 1];
@@ -140,14 +143,36 @@ export class Templet extends AnimationTemplet {
             tTempleData = tByte.getFloat32();
             tFrameHeight = isNaN(tTempleData) ? tHeight : tTempleData;
 
-            this.subTextureDic[tTextureName] = Texture.create(this._mainTexture, tX, tY, tWidth, tHeight, -tFrameX, -tFrameY, tFrameWidth, tFrameHeight);
+            var debug = false;
+            if (tTextureName == "guajia") {
+                debug = true;
+            }
+            this.subTextureDic[tTextureName] = Texture.create(this._mainTexture, tX, tY, tWidth, tHeight, -tFrameX, -tFrameY, tFrameWidth, tFrameHeight, debug);
+            this.subTextureDic[tTextureName].myName = tTextureName;
+            if (tTextureName == "guajia") {
+                console.log("guajia texture");
+                console.log("i="+i+" path="+tSrcTexturePath+" name="+tTextureName+" x="+tX+" y="+tY+" w="+tWidth+" h="+tHeight
+                    +" frameX="+tFrameX+" frameY="+tFrameY+" frameW="+tFrameWidth+" frameH="+tFrameHeight);
+            }
+/*
+http://zh.esotericsoftware.com/spine-json-format#%E9%AA%A8%E9%AA%BC%28Bones%29
+b001
+  rotate: false // true的话w, h会兑换
+  xy: 1315, 10 // tX, tY
+  size: 49, 48 // tWidth, tHeight (rotate=true，这里会对调)
+  orig: 49, 48 // tFrameWidth, tFrameHeight (同上)
+  offset: 0, 0 // tFrameX, tFrameY
+  index: -1 // 都是 -1 ?
+*/
         }
+
 
         var isSpine: boolean;
         isSpine = this._aniClassName != "Dragon";
 
         var tAniCount: number = tByte.getUint16();
         var tSectionArr: any[];
+        console.log("==> AniCount="+tAniCount+" isSpine="+isSpine);
         for (let i = 0; i < tAniCount; i++) {
             tSectionArr = [];
             tSectionArr.push(tByte.getUint16());
@@ -164,6 +189,7 @@ export class Templet extends AnimationTemplet {
         var tBoneLen: number = tByte.getInt16();
         var tBoneDic: any = {};
         var tRootBone: Bone;
+        console.log("==> BoneLen="+tBoneLen);
         for (let i = 0; i < tBoneLen; i++) {
             tBone = new Bone();
             if (i == 0) {
@@ -192,6 +218,8 @@ export class Templet extends AnimationTemplet {
             }
             tBoneDic[tName] = tBone;
             this.mBoneArr.push(tBone);
+            console.log("i="+i+" name="+tName+" parentName="+tParentName+" length="+tBone.length+
+                " inheritRot="+ tBone.inheritRotation+" inheritScale="+tBone.inheritScale);
         }
 
         this.tMatrixDataLen = tByte.getUint16();
@@ -199,6 +227,7 @@ export class Templet extends AnimationTemplet {
         var boneLength: number = Math.floor(tLen / this.tMatrixDataLen);
         var tResultTransform: Transform;
         var tMatrixArray: any[] = this.srcBoneMatrixArr;
+        console.log("==> MatrixDataSize="+this.tMatrixDataLen+" Len="+tLen+" boneLen="+boneLength);
         for (let i = 0; i < boneLength; i++) {
             tResultTransform = new Transform();
             tResultTransform.scX = tByte.getFloat32();
@@ -214,17 +243,43 @@ export class Templet extends AnimationTemplet {
             tMatrixArray.push(tResultTransform);
             tBone = this.mBoneArr[i];
             tBone.transform = tResultTransform;
+            //if (tResultTransform.skewX != 0 || tResultTransform.skewY != 0) {
+            //console.log("i="+i+
+            //" x="+tResultTransform.x+" y="+tResultTransform.y+
+            //" scX="+tResultTransform.scX+" scY="+tResultTransform.scY+
+            //" skX="+tResultTransform.skX+" skY="+tResultTransform.skY+
+            //" skewX="+tResultTransform.skewX+" skewY="+tResultTransform.skewY);
+            //}
         }
+/*
+name
+parent
+length
+transform: =normal=(inheritScale=true,inheritRotation=true) 一般都是默认
+skin: =false
+rotation: skX=0, skY=0
+x: x=0
+y: y=0
+scaleX: scX=1
+scaleY: scY=1
+shearX: skewX=0
+shearY: skewY=0
+color: =0x989898FF
+*/
 
         var tIkConstraintData: IkConstraintData;
         var tIkLen: number = tByte.getUint16();
         var tIkBoneLen: number;
+        console.log("==> IKLen="+tIkLen);
         for (let i = 0; i < tIkLen; i++) {
             tIkConstraintData = new IkConstraintData();
             tIkBoneLen = tByte.getUint16();
+
+            var strBones = "";
             for (let j = 0; j < tIkBoneLen; j++) {
                 tIkConstraintData.boneNames.push(tByte.readUTFString());
                 tIkConstraintData.boneIndexs.push(tByte.getInt16());
+                strBones+=tIkConstraintData.boneIndexs[tIkConstraintData.boneIndexs.length-1]+":"+tIkConstraintData.boneNames[tIkConstraintData.boneNames.length-1]+", ";
             }
             tIkConstraintData.name = tByte.readUTFString();
             tIkConstraintData.targetBoneName = tByte.readUTFString();
@@ -233,11 +288,18 @@ export class Templet extends AnimationTemplet {
             tIkConstraintData.mix = tByte.getFloat32();
             tIkConstraintData.isSpine = isSpine;
             this.ikArr.push(tIkConstraintData);
+            console.log("i="+i+" name="+tIkConstraintData.name+" targetIndex="+tIkConstraintData.targetBoneIndex+" targetName="+tIkConstraintData.targetBoneName+
+                " mix="+tIkConstraintData.mix+" bendDirection="+tIkConstraintData.bendDirection+" bones="+strBones);
         }
+/*
+    bendPositive: true(tIkConstraintData.bendDirection=1), false(tIkConstraintData.bendDirection=-1);
+    true才是默认值
+*/
 
         var tTfConstraintData: TfConstraintData;
         var tTfLen: number = tByte.getUint16();
         var tTfBoneLen: number;
+        console.log("==> TfLen="+tTfLen);
         for (let i = 0; i < tTfLen; i++) {
             tTfConstraintData = new TfConstraintData();
             tTfBoneLen = tByte.getUint16();
@@ -262,6 +324,7 @@ export class Templet extends AnimationTemplet {
         var tPathConstraintData: PathConstraintData;
         var tPathLen: number = tByte.getUint16();
         var tPathBoneLen: number;
+        console.log("==> PathLen="+tPathLen);
         for (let i = 0; i < tPathLen; i++) {
             tPathConstraintData = new PathConstraintData();
             tPathConstraintData.name = tByte.readUTFString();
@@ -293,31 +356,41 @@ export class Templet extends AnimationTemplet {
         var tDeformSlotDisplayData: DeformSlotDisplayData;
         var tDeformVectices: any[];
         var tDeformAniLen: number = tByte.getInt16();
+        console.log("==> DeformAniLen="+tDeformAniLen);
         for (let i = 0; i < tDeformAniLen; i++) {
             var tDeformSkinLen: number = tByte.getUint8();
             var tSkinDic: any = {};
             this.deformAniArr.push(tSkinDic);
+            console.log("  iAni="+i+" skinLen="+tDeformSkinLen);
             for (let f: number = 0; f < tDeformSkinLen; f++) {
                 tDeformAniData = new DeformAniData();
                 tDeformAniData.skinName = tByte.getUTFString();
                 tSkinDic[tDeformAniData.skinName] = tDeformAniData;
                 tDeformSlotLen = tByte.getInt16();
+                console.log("    iSkin="+f+" skinName="+tDeformAniData.skinName+" slotLen="+tDeformSlotLen);
                 for (let j = 0; j < tDeformSlotLen; j++) {
                     tDeformSlotData = new DeformSlotData();
                     tDeformAniData.deformSlotDataList.push(tDeformSlotData);
 
                     tDeformSlotDisplayLen = tByte.getInt16();
+                    console.log("      iSlot="+j+" displayLen="+tDeformSlotDisplayLen);
                     for (let k = 0; k < tDeformSlotDisplayLen; k++) {
                         tDeformSlotDisplayData = new DeformSlotDisplayData();
                         tDeformSlotData.deformSlotDisplayList.push(tDeformSlotDisplayData);
                         tDeformSlotDisplayData.slotIndex = tDSlotIndex = tByte.getInt16();
                         tDeformSlotDisplayData.attachment = tDAttachment = tByte.getUTFString();
                         tDeformTimeLen = tByte.getInt16();
+
+                        console.log("        iDisplay="+k+" slotIndex="+tDeformSlotDisplayData.slotIndex+" attach="+tDeformSlotDisplayData.attachment+" timeLen="+tDeformTimeLen);
                         for (let l = 0; l < tDeformTimeLen; l++) {
+                            var II = l;
+                            var tween = false;
                             if (tByte.getByte() == 1) {
                                 tDeformSlotDisplayData.tweenKeyList.push(true);
+                                tween = true;
                             } else {
                                 tDeformSlotDisplayData.tweenKeyList.push(false);
+                                tween = false;
                             }
                             tDTime = tByte.getFloat32();
                             tDeformSlotDisplayData.timeList.push(tDTime);
@@ -327,6 +400,8 @@ export class Templet extends AnimationTemplet {
                             for (let n = 0; n < tDeformVecticesLen; n++) {
                                 tDeformVectices.push(tByte.getFloat32());
                             }
+                            console.log(" .        iTime="+II+" tween="+tween+" dTime="+tDTime+" vers="+tDeformVectices+" len="+tDeformVecticesLen);
+                            // curve ?数据哪里取
                         }
                     }
                 }
@@ -338,9 +413,11 @@ export class Templet extends AnimationTemplet {
         var tDrawOrderLen: number;
         var tDrawOrderData: DrawOrderData;
         var tDoLen: number;
+        console.log("==> tDrawOrderAniLen="+tDrawOrderAniLen);
         for (let i = 0; i < tDrawOrderAniLen; i++) {
             tDrawOrderLen = tByte.getInt16();
             tDrawOrderArr = [];
+            console.log("iAni="+i+" len="+tDrawOrderLen);
             for (let j = 0; j < tDrawOrderLen; j++) {
                 tDrawOrderData = new DrawOrderData();
                 tDrawOrderData.time = tByte.getFloat32();
@@ -348,15 +425,20 @@ export class Templet extends AnimationTemplet {
                 for (let k = 0; k < tDoLen; k++) {
                     tDrawOrderData.drawOrder.push(tByte.getInt16());
                 }
+                console.log("  iDrawOrder="+j+" time="+tDrawOrderData.time+" Do="+tDrawOrderData.drawOrder.join(','));
                 tDrawOrderArr.push(tDrawOrderData);
             }
             this.drawOrderAniArr.push(tDrawOrderArr);
         }
+        /*
+        tDrawOrderData数组: 此数组索引-此数组值 < 0 则，这个值=offset, slot=值作为索引获取slot名称
+        */
 
         var tEventArr: EventData[];
         var tEventAniLen: number = tByte.getInt16();
         var tEventLen: number;
         var tEventData: EventData;
+        console.log("==> tEventAniLen="+tEventAniLen);
         for (let i = 0; i < tEventAniLen; i++) {
             tEventLen = tByte.getInt16();
             tEventArr = [];
@@ -374,22 +456,28 @@ export class Templet extends AnimationTemplet {
         }
 
         var tAttachmentLen: number = tByte.getInt16();
+        console.log("==> tAttachmentLen="+tAttachmentLen);
         if (tAttachmentLen > 0) {
             this.attachmentNames = [];
             for (let i = 0; i < tAttachmentLen; i++) {
                 this.attachmentNames.push(tByte.getUTFString());
             }
+            console.log(" names="+this.attachmentNames.join(","));
         }
 
         //创建插槽并绑定到骨骼上
         var tBoneSlotLen: number = tByte.getInt16();
         var tDBBoneSlot: BoneSlot;
         var tDBBoneSlotArr: any[];
+        console.log("==> tSlotLen="+tBoneSlotLen);
         for (let i = 0; i < tBoneSlotLen; i++) {
             tDBBoneSlot = new BoneSlot();
             tDBBoneSlot.name = tByte.readUTFString();
             tDBBoneSlot.parent = tByte.readUTFString();
-            tDBBoneSlot.attachmentName = tByte.readUTFString();
+
+            let LL = tByte.getUint16();
+            let attachName = tByte.readUTFBytes(LL);
+            tDBBoneSlot.attachmentName = attachName;
             tDBBoneSlot.srcDisplayIndex = tDBBoneSlot.displayIndex = tByte.getInt16();
             tDBBoneSlot.templet = this;
             this.boneSlotDic[tDBBoneSlot.name] = tDBBoneSlot;
@@ -399,7 +487,15 @@ export class Templet extends AnimationTemplet {
             }
             tDBBoneSlotArr.push(tDBBoneSlot);
             this.boneSlotArray.push(tDBBoneSlot);
+            //console.log("i="+i+" name"+tDBBoneSlot.name+" parent="+tDBBoneSlot.parent+" attach="+tDBBoneSlot.attachmentName+
+            //    " displayIndex="+tDBBoneSlot.displayIndex+" LL="+LL+" NN="+attachName);
         }
+/*
+name: name
+bone: parent
+attachment:attachmentName ("undefined"串表示没有)
+blend: ?数据从哪里来
+*/
 
         var tNameString: string = tByte.readUTFString();
         var tNameArray: any[] = tNameString.split("\n");
@@ -409,15 +505,18 @@ export class Templet extends AnimationTemplet {
         var tSkinData: SkinData, tSlotData: SlotData, tDisplayData: SkinSlotDisplayData;
         var tSlotDataLen: number, tDisplayDataLen: number;
         var tUvLen: number, tWeightLen: number, tTriangleLen: number, tVerticeLen: number, tLengthLen: number;
+        console.log("==> tSkinDataLen="+tSkinDataLen);
         for (let i = 0; i < tSkinDataLen; i++) {
             tSkinData = new SkinData();
             tSkinData.name = tNameArray[tNameStartIndex++];
             tSlotDataLen = tByte.getUint8();
+            console.log("iSkin="+i+" name="+tSkinData.name+" slotLen="+tSlotDataLen);
             for (let j = 0; j < tSlotDataLen; j++) {
                 tSlotData = new SlotData();
                 tSlotData.name = tNameArray[tNameStartIndex++];
                 tDBBoneSlot = this.boneSlotDic[tSlotData.name];
                 tDisplayDataLen = tByte.getUint8();
+                console.log("   iSlot="+j+" name="+tSlotData.name);
                 for (let k = 0; k < tDisplayDataLen; k++) {
                     tDisplayData = new SkinSlotDisplayData();
                     this.skinSlotDisplayDataArr.push(tDisplayData);
@@ -436,6 +535,12 @@ export class Templet extends AnimationTemplet {
                     tDisplayData.height = tByte.getFloat32();
                     tDisplayData.type = tByte.getUint8();
                     tDisplayData.verLen = tByte.getUint16();
+                    console.log(" .   iData="+k+" name="+tDisplayData.name+" attachName="+tDisplayData.attachmentName+
+                        " x="+tDisplayData.transform.x+" y="+tDisplayData.transform.y+
+                        " scX="+tDisplayData.transform.scX+" scY="+tDisplayData.transform.scY+
+                        " skX="+tDisplayData.transform.skX+" scY="+tDisplayData.transform.skY+
+                        " width="+tDisplayData.width+" height="+tDisplayData.height+
+                        " type="+tDisplayData.type+" verLen="+tDisplayData.verLen);
 
                     tBoneLen = tByte.getUint16();
                     if (tBoneLen > 0) {
@@ -444,6 +549,7 @@ export class Templet extends AnimationTemplet {
                             let tBoneId: number = tByte.getUint16();
                             tDisplayData.bones.push(tBoneId);
                         }
+                        console.log("bones="+tBoneLen+" ="+tDisplayData.bones.join(','));
                     }
                     tUvLen = tByte.getUint16();
                     if (tUvLen > 0) {
@@ -451,6 +557,7 @@ export class Templet extends AnimationTemplet {
                         for (let l = 0; l < tUvLen; l++) {
                             tDisplayData.uvs.push(tByte.getFloat32());
                         }
+                        console.log("uvs="+tUvLen+" ="+tDisplayData.uvs.join(','));
                     }
                     tWeightLen = tByte.getUint16();
                     if (tWeightLen > 0) {
@@ -458,6 +565,7 @@ export class Templet extends AnimationTemplet {
                         for (let l = 0; l < tWeightLen; l++) {
                             tDisplayData.weights.push(tByte.getFloat32());
                         }
+                        console.log("weights="+tWeightLen+" ="+tDisplayData.weights.join(','));
                     }
                     tTriangleLen = tByte.getUint16();
                     if (tTriangleLen > 0) {
@@ -465,6 +573,7 @@ export class Templet extends AnimationTemplet {
                         for (let l = 0; l < tTriangleLen; l++) {
                             tDisplayData.triangles.push(tByte.getUint16());
                         }
+                        console.log("tris="+tTriangleLen+" ="+tDisplayData.triangles.join(','));
                     }
                     tVerticeLen = tByte.getUint16();
                     if (tVerticeLen > 0) {
@@ -472,6 +581,7 @@ export class Templet extends AnimationTemplet {
                         for (let l = 0; l < tVerticeLen; l++) {
                             tDisplayData.vertices.push(tByte.getFloat32());
                         }
+                        console.log("vers="+tVerticeLen+" ="+tDisplayData.vertices.join(','));
                     }
 
                     tLengthLen = tByte.getUint16();
@@ -480,6 +590,7 @@ export class Templet extends AnimationTemplet {
                         for (let l = 0; l < tLengthLen; l++) {
                             tDisplayData.lengths.push(tByte.getFloat32());
                         }
+                        console.log("lens="+tLengthLen+" ="+tDisplayData.lengths.join(','));
                     }
                 }
                 tSkinData.slotArr.push(tSlotData);
@@ -488,6 +599,7 @@ export class Templet extends AnimationTemplet {
             this.skinDataArray.push(tSkinData);
         }
         var tReverse: number = tByte.getUint8();
+        console.log("tReverse="+tReverse);
         if (tReverse == 1) {
             this.yReverseMatrix = new Matrix(1, 0, 0, -1, 0, 0);
             if (tRootBone) {
@@ -506,12 +618,26 @@ export class Templet extends AnimationTemplet {
      * @param	name	纹理的名字
      * @return
      */
-    getTexture(name: string): Texture {
+    getTexture(name: string, debug: boolean = false): Texture {
         let tTexture = this.subTextureDic[name];
+        if (debug) {
+            console.log("getTexture1="+tTexture);
+        }
         if (!tTexture) {
             tTexture = this.subTextureDic[name.substring(0, name.length - 1)];
+            if (debug) {
+                console.log("getTexture2="+tTexture+" name2="+name.substring(0, name.length - 1));
+            }
         }
         if (tTexture == null) {
+            if (debug) {
+                var tex = this._mainTexture;
+                var L = [];
+                for (var v in tex.uv) {
+                    L.push(tex.uv[v]);
+                }
+                console.log("getTexture3=main wh="+tex.width+","+tex.height+" offset="+tex.offsetX+","+tex.offsetY+" sourceWH="+tex.sourceWidth+","+tex.sourceHeight+" uv="+L.join(","));
+            }
             return this._mainTexture;
         }
         return tTexture;

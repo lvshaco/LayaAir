@@ -13,6 +13,7 @@ const _rect2 = new Rectangle();
  * <code>Texture</code> 是一个纹理处理类。
  */
 export class Texture extends Resource {
+    myName: string;
     /**@private 默认 UV 信息。*/
     static readonly DEF_UV = new Float32Array([0, 0, 1.0, 0, 1.0, 1.0, 0, 1.0]);
     /**@private */
@@ -69,8 +70,8 @@ export class Texture extends Resource {
      */
     static create(source: Texture | BaseTexture, x: number, y: number, width: number, height: number,
         offsetX: number = 0, offsetY: number = 0,
-        sourceWidth: number = 0, sourceHeight: number = 0): Texture {
-        return Texture._create(source, x, y, width, height, offsetX, offsetY, sourceWidth, sourceHeight);
+        sourceWidth: number = 0, sourceHeight: number = 0, debug: boolean = false): Texture {
+        return Texture._create(source, x, y, width, height, offsetX, offsetY, sourceWidth, sourceHeight, null, debug);
     }
 
     /**
@@ -90,9 +91,12 @@ export class Texture extends Resource {
      */
     static _create(source: Texture | BaseTexture, x: number, y: number, width: number, height: number,
         offsetX: number = 0, offsetY: number = 0,
-        sourceWidth: number = 0, sourceHeight: number = 0, outTexture: Texture = null): Texture {
+        sourceWidth: number = 0, sourceHeight: number = 0, outTexture: Texture = null, debug: boolean = false): Texture {
         var btex: boolean = source instanceof Texture;
         var uv = btex ? ((<Texture>source)).uv : Texture.DEF_UV;
+        if (debug) {
+            console.log("uv="+uv);
+        }
         var bitmap = btex ? ((<Texture>source)).bitmap : <Texture2D>source;
 
         if (bitmap.width && (x + width) > bitmap.width)
@@ -110,6 +114,8 @@ export class Texture extends Resource {
         tex.height = height;
         tex.offsetX = offsetX;
         tex.offsetY = offsetY;
+        var X = x;
+        var Y = y;
 
         var dwidth: number = 1 / bitmap.width;
         var dheight: number = 1 / bitmap.height;
@@ -120,11 +126,21 @@ export class Texture extends Resource {
 
         var u1: number = tex.uv[0], v1: number = tex.uv[1], u2: number = tex.uv[4], v2: number = tex.uv[5];
         var inAltasUVWidth: number = (u2 - u1), inAltasUVHeight: number = (v2 - v1);
+        if (debug) {
+            console.log(" base:"+u1+","+v1+"   "+u2+","+v2+" uSize="+inAltasUVWidth+","+inAltasUVHeight+" SIZE="+bitmap.width+","+bitmap.height);
+        }
         var oriUV: any[] = moveUV(uv[0], uv[1], [x, y, x + width, y, x + width, y + height, x, y + height]);
         tex.uv = new Float32Array([u1 + oriUV[0] * inAltasUVWidth, v1 + oriUV[1] * inAltasUVHeight,
         u2 - (1 - oriUV[2]) * inAltasUVWidth, v1 + oriUV[3] * inAltasUVHeight,
         u2 - (1 - oriUV[4]) * inAltasUVWidth, v2 - (1 - oriUV[5]) * inAltasUVHeight,
         u1 + oriUV[6] * inAltasUVWidth, v2 - (1 - oriUV[7]) * inAltasUVHeight]);
+        if (debug) {
+            var L = [];
+            for (var v in tex.uv) {
+                L.push(tex.uv[v]);
+            }
+            console.log(" guajia TexRange: w="+tex.width+" h="+tex.height+" x="+X+" y="+Y+" uv="+L.join(',')+" oriUV="+oriUV.join(','));
+        }
 
         var bitmapScale: number = ((<Texture>(bitmap as any))).scaleRate;
         if (bitmapScale && bitmapScale != 1) {

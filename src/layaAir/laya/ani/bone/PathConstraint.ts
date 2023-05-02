@@ -238,6 +238,9 @@ export class PathConstraint {
 				worldVertices[w] = vx * a + vy * bb + x;
 				worldVertices[w + 1] = -(vx * c + vy * d + y);
 			}
+			console.log(" Pvertices: name="+boneSlot.name+" parent="+boneSlot.parent+" attachName="+boneSlot.attachmentName+
+				" vertices="+worldVertices.join(","));
+			throw new Error('got bone none!');
 			return;
 		}
 		for (i = 0; i < start; i += 2) {

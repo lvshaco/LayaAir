@@ -4,6 +4,7 @@ import { AnimationNodeContent } from "./AnimationNodeContent";
 import { KeyFramesContent } from "./KeyFramesContent";
 import { IAniLib } from "./AniLibPack";
 import { Byte } from "../utils/Byte";
+import { Keyframe } from "../d3/core/Keyframe";
 
 /**
  * @internal
@@ -23,7 +24,9 @@ export class AnimationParser01 {
 		var aniClassName: string = reader.readUTFString();//字符串(动画播放器类名，缺省为ANI)
 		templet._aniClassName = aniClassName;
 		var strList: any[] = reader.readUTFString().split("\n");//字符串(\n分割 UTF8 )
+		console.log("==> nameTable="+strList.join(","));
 		var aniCount: number = reader.getUint8();//动画块数:Uint8
+		console.log("==> aniClassName="+aniClassName+" aniCount="+aniCount);
 
 		var publicDataPos: number = reader.getUint32();//公用数据POS	
 		var publicExtDataPos: number = reader.getUint32();//公用扩展数据POS
@@ -51,7 +54,7 @@ export class AnimationParser01 {
 			var boneCount: number = ani.nodes.length = reader.getUint8();//得到本动画骨骼数目
 
 			ani.totalKeyframeDatasLength = 0;
-
+			//console.log("  iAni="+i+" name="+name+" playTime="+ani.playTime+" boneCount="+boneCount);
 			for (j = 0; j < boneCount; j++) {
 				var node: AnimationNodeContent = ani.nodes[j] = new AnimationNodeContent();
 				//[IF-SCRIPT] {};//不要删除
@@ -97,6 +100,7 @@ export class AnimationParser01 {
 				node.keyFrame.length = keyframeCount;
 				var startTime: number = 0;
 				var keyFrame: KeyFramesContent;
+				var strIP = "";
 				for (k = 0, n = keyframeCount; k < n; k++) {
 					keyFrame = node.keyFrame[k] = new KeyFramesContent();
 					//[IF-SCRIPT] {};//不要删除
@@ -126,6 +130,7 @@ export class AnimationParser01 {
 									keyFrame.interpolationData.push(reader.getFloat32());
 								}
 						}
+						strIP += lerpType+",";
 						//for (m = 0; m < interDataLength; m++) {
 						//var lerpData:int = read.getFloat32();//插值数据
 						//switch (lerpData) {
@@ -159,6 +164,14 @@ export class AnimationParser01 {
 				keyFrame.startTime = ani.playTime;//因工具BUG，矫正最后一帧startTime
 				node.playTime = ani.playTime;//节点总时间可能比总时长大，次处修正
 				templet._calculateKeyFrame(node, keyframeCount, keyframeDataCount);
+				console.log(" iBone="+j+" iParent="+node.parentIndex+" name="+node.name+" lerpType="+node.lerpType+" strIP="+strIP+" playTime="+node.playTime+" nKeyFrame="+keyframeCount+" vs "+node.keyFrame.length+" keyframeParamsOffset="+keyframeParamsOffset);
+				for (var ii: number = 0; ii < keyframeCount; ii++) {
+					var keyFrame = node.keyFrame[ii];
+					console.log("   iKeyFrame="+ii+" startTime="+keyFrame.startTime+" duration="+keyFrame.duration+" nData="+keyframeDataCount
+						+" data="+keyFrame.data.join(",") +" dData="+keyFrame.dData.join(","));
+					// data=1,0,0,1,0,0,0,0
+					// 数据格式： scX, (skX)rotateX, (skY)rotateY, scY, x, y, skewX(shearX), skewY(shearY)
+				}
 			}
 		}
 	}

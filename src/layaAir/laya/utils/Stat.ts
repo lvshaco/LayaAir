@@ -222,12 +222,12 @@ export class Stat {
      */
     static show(x: number = 0, y: number = 0, views: Array<StatUIParams> = Stat.AllShow): void {
         Stat._currentShowArray = views;
-        Stat._StatRender.show(x, y, views);
+        //Stat._StatRender.show(x, y, views);
     }
 
     static showToggle(x: number = 0, y: number = 0, views: Array<StatToggleUIParams> = Stat.AllToggle): void {
         Stat._currentToggleArray = views;
-        Stat._StatRender.showToggle(x, y, views);
+        //Stat._StatRender.showToggle(x, y, views);
     }
 
     /**

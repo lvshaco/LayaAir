@@ -50,6 +50,7 @@ export class SkinSlotDisplayData {
 			this.texture.offsetY = -currTexture.offsetY;
 			this.texture.sourceWidth = currTexture.sourceHeight;
 			this.texture.sourceHeight = currTexture.sourceWidth;
+			console.log("TexChange1:"+currTexture.myName+" w="+this.texture.width+" h="+this.texture.height);
 		} else {
 			this.texture.width = currTexture.width;
 			this.texture.height = currTexture.height;
@@ -57,6 +58,7 @@ export class SkinSlotDisplayData {
 			this.texture.offsetY = -currTexture.offsetY;
 			this.texture.sourceWidth = currTexture.sourceWidth;
 			this.texture.sourceHeight = currTexture.sourceHeight;
+			//console.log("TexChange2:"+currTexture.myName);
 		}
 		return this.texture;
 	}

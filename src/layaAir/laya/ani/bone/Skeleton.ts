@@ -24,6 +24,7 @@ import { IAniLib } from "../AniLibPack";
 import { Templet } from "../../ani/bone/Templet";
 import { ILaya } from "../../../ILaya";
 import { LayaEnv } from "../../../LayaEnv";
+import { StaticMeshMergeInfo } from "../../d3/component/staticmesh/StaticMeshMergeInfo";
 
 /**动画开始播放调度
  * @eventType Event.PLAYED
@@ -59,11 +60,11 @@ export class Skeleton extends Sprite {
     /** @internal */
     private _lastTime: number = 0;//上次的帧时间
     /** @internal */
-    private _currAniIndex: number = -1;
+    private _currAniIndex: number = -1; // 动画索引
     /** @internal */
     private _pause: boolean = true;
     /** @internal */
-    protected _aniClipIndex: number = -1;
+    protected _aniClipIndex: number = -1; // 动画索引
     /** @internal */
     protected _clipIndex: number = -1;
     /** @internal */
@@ -616,23 +617,32 @@ export class Skeleton extends Sprite {
         //对插槽进行插值计算
         let tSlotDic: any = {};
         let tSlotAlphaDic: any = {};
+        //console.log("slot_Bone=");
         for (n += tSectionArr[1]; i < n; i++) {
             let tBoneData = bones[i];
             tSlotDic[tBoneData.name] = origDt[tStartIndex++];
             tSlotAlphaDic[tBoneData.name] = origDt[tStartIndex++];	// 每一个slot的alpha?
             //预留
+            //console.log("slot bone i="+i+" name="+tBoneData.name+" tSlot="+tSlotDic[tBoneData.name]+" tAlpha="+tSlotAlphaDic[tBoneData.name]+" startIndex="+(tStartIndex-2));
             tStartIndex += 4;
         }
+        /*
+        tSlotDic[name] == -2: 表示没有, 其它索引从attachments里面找, 或则找不到都表示没有
+        tSlotAlphaDic[name] == 1 就不用处理，0表示"ff000000", 其它小数x255表示作为alpha值。(color紧紧剩下alpha了? 还原成ff0000XX)
+        */
         //ik
         let tBendDirectionDic: any = {};
         let tMixDic: any = {};
+        //console.log("ik_Bone=");
         for (n += tSectionArr[2]; i < n; i++) {
             let tBoneData = bones[i];
             tBendDirectionDic[tBoneData.name] = origDt[tStartIndex++];
             tMixDic[tBoneData.name] = origDt[tStartIndex++];
+            //console.log("ik bone i="+i+" name="+tBoneData.name+" bendDirectionDic="+tBendDirectionDic[tBoneData.name]+" mix="+tMixDic[tBoneData.name]+" startIndex="+(tStartIndex-2));
             //预留
             tStartIndex += 4;
         }
+        //throw new Error('Parameter is not a number!');
         //path
         if (this._pathDic) {
             for (n += tSectionArr[3]; i < n; i++) {
@@ -739,6 +749,11 @@ export class Skeleton extends Sprite {
                 let tDBBoneSlot = this._boneSlotArray[this._drawOrder[i]];
                 let tSlotData2 = tSlotDic[tDBBoneSlot.name];
                 let tSlotData3 = tSlotAlphaDic[tDBBoneSlot.name];
+                var debug = false;
+                if (tDBBoneSlot.attachmentName == "buff_cap_normal") {
+                    debug = true;
+                    console.log("Gott tSlotData2="+tSlotData2+" tSlotData3="+tSlotData3);
+                }
                 if (!isNaN(tSlotData3)) {	// 如果alpha有值的话
                     //tGraphics.save();
                     //tGraphics.alpha(tSlotData3);
@@ -771,6 +786,7 @@ export class Skeleton extends Sprite {
                 }
             }
         } else {
+            //console.log("_clipIndex="+_clipIndex)
             for (i = 0, n = this._boneSlotArray.length; i < n; i++) {
                 let tDBBoneSlot = this._boneSlotArray[i];
                 let tSlotData2 = tSlotDic[tDBBoneSlot.name];
@@ -779,9 +795,17 @@ export class Skeleton extends Sprite {
                     //tGraphics.save();
                     //tGraphics.alpha(tSlotData3);
                 }
+                var debug = false;
+                if (tDBBoneSlot.currDisplayData && tDBBoneSlot.currDisplayData.attachmentName == "orange_bossing_dizzy3") {
+                    debug = true;
+                    console.log("Gott tSlotData2="+tSlotData2+" tSlotData3="+tSlotData3);
+                }
                 if (!isNaN(tSlotData2) && tSlotData2 != -2) {
                     if (this._templet.attachmentNames) {
-                        tDBBoneSlot.showDisplayByName(this._templet.attachmentNames[tSlotData2]);
+                        tDBBoneSlot.showDisplayByName(this._templet.attachmentNames[tSlotData2], debug);
+                        if (debug) {
+                            console.log("showDisplayByName:"+this._templet.attachmentNames[tSlotData2]);
+                        }
                     } else {
                         tDBBoneSlot.showDisplayByIndex(tSlotData2);
                     }
@@ -796,11 +820,19 @@ export class Skeleton extends Sprite {
                 } else {
                     tDBBoneSlot.deformData = null;
                 }
-                if (!isNaN(tSlotData3)) {
-                    tDBBoneSlot.draw(tGraphics, this._boneMatrixArray, this._aniMode == 2, tSlotData3);
-                } else {
-                    tDBBoneSlot.draw(tGraphics, this._boneMatrixArray, this._aniMode == 2);
+                if (debug) {
+                    console.log("GotA="+i+" parent="+tDBBoneSlot.parent+" name="+tDBBoneSlot.name+" curr_attachName="+tDBBoneSlot.currDisplayData.attachmentName+" deform="+tDeformDic[i]+" currDisplayData.type="+tDBBoneSlot.currDisplayData.type)
                 }
+                //if (tDBBoneSlot.attachmentName == "guajia") {
+                    if (!isNaN(tSlotData3)) {
+                        tDBBoneSlot.draw(tGraphics, this._boneMatrixArray, this._aniMode == 2, tSlotData3, debug);
+                    } else {
+                        tDBBoneSlot.draw(tGraphics, this._boneMatrixArray, this._aniMode == 2, 1, debug);
+                    }
+                //}
+                //if (tDBBoneSlot.attachmentName == "guajia") {
+                //    console.log("Got guajia attachmentName");
+                //}
                 if (!isNaN(tSlotData3)) {
                     //tGraphics.restore();
                 }

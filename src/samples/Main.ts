@@ -1,6 +1,6 @@
 
 import { Laya } from "Laya";
-import { Stat } from "laya/utils/Stat";
+//import { Stat } from "laya/utils/Stat";
 import { Laya3D } from "Laya3D";
 import { Sprite } from "laya/display/Sprite";
 import { Stage } from "laya/display/Stage";
@@ -51,8 +51,8 @@ export class Main {
             Laya.stage.scaleMode = Stage.SCALE_FULL;
             Laya.stage.screenMode = Stage.SCREEN_NONE;
         }
-        Laya.stage.bgColor = "#ffffff";
-        Stat.show();
+        Laya.stage.bgColor = "#ff0000ff";
+        //Stat.show();
 
         //初始化socket连接
         if (Main.isOpenSocket)

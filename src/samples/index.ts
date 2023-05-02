@@ -12,5 +12,9 @@ import "laya/html/ModuleDef";
 import { Resource } from "laya/resource/Resource";
 import { Main } from "./Main";
 Resource.DEBUG = true;
-
-new Main(false);
+//new Main(false);
+new Main(false, false);
+import { Skeleton_Test } from "./2d/Skeleton_Test";
+import { Skeleton_Test2 } from "./2d/Skeleton_Test2";
+new Skeleton_Test(Main);
+//new Skeleton_Test2(Main);
